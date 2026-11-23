@@ -8,6 +8,9 @@ import nl.weerenwind.logic.AdviceKind
 import nl.weerenwind.logic.Logic
 import nl.weerenwind.logic.Rain
 import nl.weerenwind.logic.Units
+import nl.weerenwind.logic.Week
+import nl.weerenwind.data.Day
+import java.time.LocalDate
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -74,5 +77,12 @@ class LogicTest {
         assertEquals(1, w.size)
         assertEquals(LocalDateTime.of(2026, 11, 23, 13, 0), w[0].first)
         assertEquals(LocalDateTime.of(2026, 11, 23, 16, 0), w[0].second)
+    }
+
+    @Test fun weekLine() {
+        fun day(p: Double, prob: Int, code: Int) = Day(LocalDate.of(2026, 11, 24), code, 9.0, 3.0, p, prob, 20.0, 35.0, 240, 1.0, null, null)
+        assertEquals("Droog", Week.line(day(0.0, 5, 3), Settings()))
+        assertEquals("Grotendeels droog", Week.line(day(0.3, 20, 3), Settings()))
+        assertEquals("Buien, 4,2 mm (80%)", Week.line(day(4.2, 80, 81), Settings()))
     }
 }

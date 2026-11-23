@@ -21,6 +21,7 @@ Geen account, geen advertenties, geen analytics, geen Google-diensten en geen lo
 | Extra thema's | Systeem, Grafiet, Nachtblauw, Nachtrood, Hoog contrast, Licht, Retro weerkaart |
 | Eenheden | °C, wind in Beaufort (of km/u, m/s), neerslag in mm |
 | Adviezen | Regenjas, warme jas, gladheid, harde wind, zonnebrand; drempels instelbaar |
+| Week | 7 dagen per plek: min/max met temperatuurbalk, neerslag, kans, wind; dag 3+ gedimd (onzekerder); tik voor details |
 | Regen | Per kwartier (3 uur), buienbalk 24 uur, "Hoe nat word ik?", beste vertrekmoment, droge vensters |
 | Meldingen | Geen (versie 2) |
 | Widget | 2×1: twee plekken, of nu → over 3 uur; ververst hooguit elke 2 uur |
@@ -46,7 +47,7 @@ Geen account, geen advertenties, geen analytics, geen Google-diensten en geen lo
 
 ## Bewust weggelaten (voor later)
 
-Meldingen en officiële KNMI-waarschuwingen, wifi-herkenning, feedbackfunctie, website-versie, tijdelijke plekken, 14-daagse verwachting.
+Meldingen en officiële KNMI-waarschuwingen, wifi-herkenning, feedbackfunctie, website-versie, tijdelijke plekken, 14-daagse verwachting (de week is bewust 7 dagen).
 
 ## Techniek
 

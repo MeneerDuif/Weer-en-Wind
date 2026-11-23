@@ -90,6 +90,24 @@ object Logic {
     }
 }
 
+object Week {
+    /** Na ongeveer 2 dagen worden verwachtingen merkbaar onzekerder. */
+    const val RELIABLE_DAYS = 2
+
+    /** Korte dagregel, zoals "Droog" of "Buien, 4,2 mm (80%)". */
+    fun line(d: nl.weerenwind.data.Day, s: Settings): String {
+        val wet = d.precip >= 1.0 || d.probMax >= max(s.rainProb, 60)
+        if (!wet) return if (d.precip >= 0.1) "Grotendeels droog" else "Droog"
+        val k = when {
+            Codes.isSnow(d.code) -> "Sneeuw"
+            Codes.isThunder(d.code) -> "Onweer"
+            Codes.isShower(d.code) -> "Buien"
+            else -> "Regen"
+        }
+        return "$k, ${Units.mm(d.precip)} mm (${d.probMax}%)"
+    }
+}
+
 object Rain {
     /** Totale neerslag (mm) tijdens een rit van [minutes] minuten vanaf [start]. */
     fun ride(f: Forecast, start: LocalDateTime, minutes: Int): Double =

@@ -24,6 +24,7 @@ import nl.weerenwind.UiState
 val TABS = listOf(
     "Vandaag" to "◐",
     "Uren" to "≣",
+    "Week" to "▦",
     "Regen" to "☂︎",
     "Plekken" to "◎",
     "Opties" to "⚙︎",
@@ -61,10 +62,11 @@ fun AppRoot(vm: AppViewModel, state: UiState) {
     ) { pad ->
         Box(Modifier.padding(pad).fillMaxSize()) {
             when (tab) {
-                0 -> TodayScreen(state, vm) { tab = 3 }
+                0 -> TodayScreen(state, vm) { tab = 4 }
                 1 -> HourlyScreen(state, vm)
-                2 -> RainScreen(state)
-                3 -> PlacesScreen(state, vm)
+                2 -> WeekScreen(state)
+                3 -> RainScreen(state)
+                4 -> PlacesScreen(state, vm)
                 else -> SettingsScreen(state, vm)
             }
         }

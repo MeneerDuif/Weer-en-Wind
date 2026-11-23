@@ -52,7 +52,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     fun refreshIfStale() {
         val b = _state.value.bundle
         val stale = b == null || System.currentTimeMillis() - b.fetchedAt > 30 * 60 * 1000
-        val missing = _state.value.places.any { b?.forecasts?.containsKey(it.id) != true }
+        val missing = _state.value.places.any { b?.forecasts?.get(it.id)?.days?.isNotEmpty() != true }
         if (stale || missing) refresh()
     }
 

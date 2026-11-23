@@ -58,7 +58,7 @@ fun SettingsScreen(state: UiState, vm: AppViewModel) {
 
         Section("Startpagina") {
             Row(Modifier.fillMaxWidth()) {
-                TABS.take(3).forEachIndexed { i, (label, _) ->
+                TABS.take(4).forEachIndexed { i, (label, _) ->
                     Chip(label, s.startTab == i) { vm.updateSettings { it.copy(startTab = i) } }
                 }
             }
