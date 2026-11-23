@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Minimalistisch: witte zonring met een blauwe druppel -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <path
+        android:strokeColor="#FFE8E8E8"
+        android:strokeWidth="4"
+        android:fillColor="#00000000"
+        android:pathData="M48,47m-13,0a13,13 0,1 1,26 0a13,13 0,1 1,-26 0" />
+    <path
+        android:fillColor="#FF5AB0FF"
+        android:pathData="M63,48 C63,48 74,61 74,68 A11,11 0 0 1 52,68 C52,61 63,48 63,48 Z" />
+</vector>
