@@ -47,8 +47,8 @@ fun PlacesScreen(state: UiState, vm: AppViewModel) {
     var q by rememberSaveable { mutableStateOf("") }
     val doSearch = { focus.clearFocus(); vm.search(q) }
 
-    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp)) {
-        ScreenTitle("Plekken")
+    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 20.dp, vertical = 12.dp)) {
+        ScreenTitle("Plekken", kicker = "Zonder locatie · op dit toestel")
         Row(verticalAlignment = Alignment.CenterVertically) {
             OutlinedTextField(
                 value = q,

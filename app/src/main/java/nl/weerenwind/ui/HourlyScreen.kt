@@ -1,5 +1,6 @@
 package nl.weerenwind.ui
 
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -33,9 +34,9 @@ fun HourlyScreen(state: UiState, vm: AppViewModel) {
     val c = LocalWeer.current
     val s = state.settings
     val n = if (s.hours48) 48 else 24
-    LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(16.dp)) {
+    LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(horizontal = 20.dp, vertical = 12.dp)) {
         item { Column {
-            ScreenTitle("Uurrooster") {
+            ScreenTitle("Uren", kicker = "Uurrooster · ${if (s.hours48) 48 else 24} uur") {
                 Row {
                     Chip("24 u", !s.hours48) { vm.updateSettings { it.copy(hours48 = false) } }
                     Chip("48 u", s.hours48) { vm.updateSettings { it.copy(hours48 = true) } }
@@ -102,14 +103,14 @@ private fun HourRow(h: Hour, s: Settings) {
     val label = "%02d".format(h.time.minusHours(1).hour)
     Row(Modifier.fillMaxWidth().padding(vertical = 7.dp), verticalAlignment = Alignment.CenterVertically) {
         Text(label, Modifier.width(44.dp), fontSize = 14.sp, color = c.muted, style = Tnum)
-        Text(Codes.glyph(h.code, h.isDay), Modifier.width(30.dp), fontSize = 16.sp, color = c.text)
-        Text(Units.temp(h.temp), Modifier.width(50.dp), fontSize = 15.sp, color = c.text, style = Tnum)
+        Box(Modifier.width(30.dp)) { WeatherIcon(h.code, h.isDay, 20.dp) }
+        BigNumber(Units.temp(h.temp), 20.sp, Modifier.width(50.dp))
         Text(if (h.precip >= 0.05) Units.mm(h.precip) else "–", Modifier.width(48.dp), fontSize = 14.sp,
             color = if (h.precip >= 0.1) c.rain else c.faint, style = Tnum)
         Text("${h.prob}%", Modifier.width(48.dp), fontSize = 14.sp,
             color = if (h.prob >= s.rainProb) c.rain else c.faint, style = Tnum)
         Row(Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically) {
-            WindArrow(h.dir, size = 13.sp)
+            WindArrow(h.dir, size = 11.dp)
             Text(" ${Units.wind(h.wind, s.windUnit)}", fontSize = 13.sp,
                 color = if (Units.bft(h.wind) >= s.windBft) c.wind else c.muted, style = Tnum)
         }

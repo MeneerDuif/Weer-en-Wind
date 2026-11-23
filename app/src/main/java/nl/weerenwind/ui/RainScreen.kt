@@ -38,8 +38,8 @@ fun RainScreen(state: UiState) {
     val c = LocalWeer.current
     var offset by rememberSaveable { mutableIntStateOf(0) }
     val s = state.settings
-    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp)) {
-        ScreenTitle("Regen")
+    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 20.dp, vertical = 12.dp)) {
+        ScreenTitle("Regen", kicker = "Buien · ritten · droge vensters")
         if (state.slotPlaces.isEmpty()) {
             Text("Voeg eerst een plek toe.", color = c.muted)
             return@Column
@@ -77,14 +77,14 @@ private fun LookCard(p: Place, f: Forecast, offset: Int, s: Settings, modifier: 
         }
         Text("rond ${Units.hm(h.time)}", fontSize = 12.sp, color = c.faint)
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Text(Codes.glyph(h.code, h.isDay), fontSize = 20.sp, color = c.text)
+            WeatherIcon(h.code, h.isDay, 26.dp)
             Spacer(Modifier.width(6.dp))
-            Text(Units.temp(h.temp), fontSize = 28.sp, fontWeight = FontWeight.Light, color = c.text, style = Tnum)
+            BigNumber(Units.temp(h.temp), 40.sp)
         }
         Text("${Units.mm(h.precip)} mm · ${h.prob}%", fontSize = 13.sp,
             color = if (h.prob >= s.rainProb || h.precip >= s.rainMm) c.rain else c.muted)
         Row(verticalAlignment = Alignment.CenterVertically) {
-            WindArrow(h.dir, size = 13.sp)
+            WindArrow(h.dir, size = 11.dp)
             Text(" ${Units.wind(h.wind, s.windUnit)}", fontSize = 13.sp, color = c.muted)
         }
     }
@@ -94,7 +94,7 @@ private fun LookCard(p: Place, f: Forecast, offset: Int, s: Settings, modifier: 
 private fun RainCard(p: Place, f: Forecast, s: Settings) {
     val c = LocalWeer.current
     val now = f.localNow()
-    WCard(Modifier.fillMaxWidth().padding(top = 12.dp)) {
+    WCard(Modifier.fillMaxWidth().padding(top = 22.dp).reveal(2)) {
         Label(p.name, color = c.text, size = 12.sp)
 
         val qs = f.quarters.filter { it.time.isAfter(now) }.take(12)
@@ -120,7 +120,7 @@ private fun RainCard(p: Place, f: Forecast, s: Settings) {
         }
 
         Spacer(Modifier.height(14.dp))
-        Text("Hoe nat word ik?", fontSize = 15.sp, color = c.text, fontWeight = FontWeight.Medium)
+        Voice("Hoe nat word ik?", size = 24.sp)
         val dur = s.rideMinutes
         val mmNow = Rain.ride(f, now, dur)
         Text("Rit van $dur min, nu vertrekken: ${Rain.label(mmNow)} (${Units.mm(mmNow)} mm)",
@@ -133,7 +133,8 @@ private fun RainCard(p: Place, f: Forecast, s: Settings) {
         )
 
         Spacer(Modifier.height(14.dp))
-        Text("Droge vensters (≥ 2 uur)", fontSize = 15.sp, color = c.text, fontWeight = FontWeight.Medium)
+        Voice("Droge vensters", size = 24.sp)
+        Label("minstens 2 uur, komende 24 uur", color = c.faint)
         val windows = Rain.dryWindows(f, now, s)
         if (windows.isEmpty()) {
             Text("Geen in de komende 24 uur", fontSize = 13.sp, color = c.muted)

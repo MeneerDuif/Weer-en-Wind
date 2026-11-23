@@ -2,6 +2,7 @@ package nl.weerenwind.ui
 
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -53,8 +54,8 @@ fun WeekScreen(state: UiState) {
         state.bundle?.forecasts?.get(p.id)?.let { f -> p to f.days.filter { !it.date.isBefore(f.localNow().toLocalDate()) }.take(7) }
     }.filter { it.second.isNotEmpty() }
 
-    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp)) {
-        ScreenTitle("Week")
+    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 20.dp, vertical = 12.dp)) {
+        ScreenTitle("Week", kicker = "Zeven dagen vooruit")
         when {
             state.slotPlaces.isEmpty() -> { Text("Voeg eerst een plek toe.", color = c.muted); return@Column }
             withDays.isEmpty() -> {
@@ -71,18 +72,18 @@ fun WeekScreen(state: UiState) {
             "Vanaf dag ${Week.RELIABLE_DAYS + 1} is de verwachting onzekerder; die dagen staan gedimd. Tik op een dag voor details.",
             fontSize = 12.sp, color = c.faint, modifier = Modifier.padding(bottom = 4.dp),
         )
-        withDays.forEach { (p, days) -> WeekCard(p, days, lo, hi, s) }
+        withDays.forEachIndexed { i, (p, days) -> WeekCard(p, days, lo, hi, s, Modifier.reveal(1 + i)) }
         Spacer(Modifier.height(12.dp))
         Text("Weerdata: Open-Meteo.com (CC BY 4.0)", fontSize = 11.sp, color = c.faint)
     }
 }
 
 @Composable
-private fun WeekCard(p: Place, days: List<Day>, lo: Double, hi: Double, s: Settings) {
+private fun WeekCard(p: Place, days: List<Day>, lo: Double, hi: Double, s: Settings, modifier: Modifier) {
     val c = LocalWeer.current
     var open by rememberSaveable(p.id) { mutableStateOf<String?>(null) }
     val today = days.first().date
-    WCard(Modifier.fillMaxWidth().padding(top = 12.dp)) {
+    WCard(modifier.fillMaxWidth().padding(top = 18.dp)) {
         Label(p.name, color = c.text, size = 12.sp)
         Spacer(Modifier.height(4.dp))
         days.forEachIndexed { i, d ->
@@ -100,7 +101,7 @@ private fun WeekCard(p: Place, days: List<Day>, lo: Double, hi: Double, s: Setti
                     val wet = d.precip >= 1.0 || d.probMax >= max(s.rainProb, 60)
                     Text(Week.line(d, s), fontSize = 12.sp, color = if (wet) c.rain else c.muted,
                         modifier = Modifier.weight(1f))
-                    WindArrow(d.dir, size = 12.sp,
+                    WindArrow(d.dir, size = 10.dp,
                         color = if (Units.bft(d.windMax) >= s.windBft) c.wind else c.faint)
                     Text(" ${Units.wind(d.windMax, s.windUnit)}", fontSize = 12.sp,
                         color = if (Units.bft(d.windMax) >= s.windBft) c.wind else c.muted, style = Tnum)
@@ -122,9 +123,10 @@ private fun DayRow(d: Day, label: String, lo: Double, hi: Double) {
     val c = LocalWeer.current
     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
         Text(label, Modifier.width(74.dp), fontSize = 14.sp, color = c.text)
-        Text(Codes.glyph(d.code, true), Modifier.width(26.dp), fontSize = 16.sp, color = c.text)
+        Box(Modifier.width(30.dp)) { WeatherIcon(d.code, true, 22.dp) }
         Text(Units.temp(d.tMin), Modifier.width(38.dp), fontSize = 14.sp, color = c.muted,
             style = Tnum, textAlign = TextAlign.End)
+        val grow = growIn(delayMs = 200, durationMs = 1000)
         val cold = c.cold
         val warm = c.warm
         val track = c.border
@@ -134,14 +136,13 @@ private fun DayRow(d: Day, label: String, lo: Double, hi: Double) {
             val x0 = (((d.tMin - lo) / (hi - lo)) * size.width).toFloat()
             val x1 = (((d.tMax - lo) / (hi - lo)) * size.width).toFloat()
             val start = min(x0, x1).coerceIn(0f, size.width)
-            val w = max(max(x0, x1) - start, size.height)
+            val w = max(max(x0, x1) - start, size.height) * grow
             drawRoundRect(
                 Brush.horizontalGradient(listOf(cold, warm), startX = 0f, endX = size.width),
                 Offset(start, 0f), Size(w, size.height), r,
             )
         }
-        Text(Units.temp(d.tMax), Modifier.width(38.dp), fontSize = 14.sp, color = c.text,
-            style = Tnum, fontWeight = FontWeight.Medium)
+        BigNumber(Units.temp(d.tMax), 22.sp, Modifier.width(38.dp))
     }
 }
 

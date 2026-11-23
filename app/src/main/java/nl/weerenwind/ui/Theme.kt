@@ -1,6 +1,14 @@
 package nl.weerenwind.ui
 
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Typography
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.Font
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontStyle
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.sp
+import nl.weerenwind.R
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
@@ -95,6 +103,35 @@ object Themes {
 
 val LocalWeer = staticCompositionLocalOf { Themes.amoled }
 
+/**
+ * Typografie: een redactionele serif (Instrument Serif) voor grote getallen en zinnen,
+ * en een technische mono (IBM Plex Mono) voor data, labels en tabellen — als een nachtelijk meetinstrument.
+ */
+object Type {
+    val serif = FontFamily(
+        Font(R.font.instrument_serif, FontWeight.Normal, FontStyle.Normal),
+        Font(R.font.instrument_serif_italic, FontWeight.Normal, FontStyle.Italic),
+    )
+    val mono = FontFamily(
+        Font(R.font.plex_mono_light, FontWeight.Light),
+        Font(R.font.plex_mono, FontWeight.Normal),
+        Font(R.font.plex_mono_medium, FontWeight.Medium),
+    )
+
+    fun typography(): Typography {
+        val base = Typography()
+        fun m(t: TextStyle) = t.copy(fontFamily = mono)
+        fun s(t: TextStyle) = t.copy(fontFamily = serif, fontWeight = FontWeight.Normal)
+        return Typography(
+            displayLarge = s(base.displayLarge), displayMedium = s(base.displayMedium), displaySmall = s(base.displaySmall),
+            headlineLarge = s(base.headlineLarge), headlineMedium = s(base.headlineMedium), headlineSmall = s(base.headlineSmall),
+            titleLarge = s(base.titleLarge), titleMedium = m(base.titleMedium), titleSmall = m(base.titleSmall),
+            bodyLarge = m(base.bodyLarge).copy(fontSize = 14.sp), bodyMedium = m(base.bodyMedium), bodySmall = m(base.bodySmall),
+            labelLarge = m(base.labelLarge), labelMedium = m(base.labelMedium), labelSmall = m(base.labelSmall),
+        )
+    }
+}
+
 @Composable
 fun WeerTheme(c: WeerColors, content: @Composable () -> Unit) {
     val scheme = if (c.isLight) {
@@ -111,6 +148,6 @@ fun WeerTheme(c: WeerColors, content: @Composable () -> Unit) {
         )
     }
     CompositionLocalProvider(LocalWeer provides c) {
-        MaterialTheme(colorScheme = scheme, content = content)
+        MaterialTheme(colorScheme = scheme, typography = Type.typography(), content = content)
     }
 }

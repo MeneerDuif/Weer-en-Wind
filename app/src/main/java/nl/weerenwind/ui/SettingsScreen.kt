@@ -42,8 +42,8 @@ import java.util.Date
 fun SettingsScreen(state: UiState, vm: AppViewModel) {
     val c = LocalWeer.current
     val s = state.settings
-    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp)) {
-        ScreenTitle("Opties")
+    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 20.dp, vertical = 12.dp)) {
+        ScreenTitle("Opties", kicker = "Thema · drempels · privacy")
 
         Section("Thema") {
             ThemeRow("systeem", "Volgt het systeem (AMOLED / Licht)", Themes.amoled, s.theme == "systeem") {
@@ -131,7 +131,7 @@ private fun ThemeRow(id: String, label: String, t: WeerColors, selected: Boolean
             contentAlignment = Alignment.Center,
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Text("Aa", fontSize = 11.sp, color = t.text)
+                Text("Aa", fontSize = 14.sp, color = t.text, fontFamily = Type.serif)
                 Spacer(Modifier.width(4.dp))
                 Box(Modifier.size(6.dp).clip(CircleShape).background(t.rain))
                 Spacer(Modifier.width(2.dp))

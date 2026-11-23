@@ -45,6 +45,14 @@ Geen account, geen advertenties, geen analytics, geen Google-diensten en geen lo
 | Waarschuwing | `#FF6B6B` |
 | Zon | `#FFD166` |
 
+## Vormgeving: "nachtelijk meetinstrument"
+
+- **Typografie:** [Instrument Serif](https://github.com/Instrument/instrument-serif) voor grote temperaturen en de cursieve "stem" van de app ("Droog tot 15:00, daarna buien."), [IBM Plex Mono](https://github.com/IBM/plex) voor data, labels en tabellen. Beide meegeleverd (OFL, zie `fonts-licenses/`), dus geen Google Fonts-dienst.
+- **Achtergrond:** puur zwart met een zwakke gloed linksboven in de kleur van het huidige weer bij plek A (blauw bij regen, amber bij warmte, koel blauw bij kou of 's nachts) en een fijn stippenraster als millimeterpapier.
+- **Vorm:** geen kaartjes maar haarlijnen met een korte witte "tick", zoals een schaalverdeling; tabbalk met genummerde tabs (01–06) en een witte streep voor de actieve tab.
+- **Iconen:** eigen lijn-iconen; wit voor de vorm, één accentkleur voor wat telt (zon, druppels, sneeuw, bliksem).
+- **Beweging:** gestaffelde binnenkomst per scherm, temperatuurcurve en regenstaafjes die zich van links naar rechts tekenen, weekbalken die uitschuiven, zachte overgang tussen tabs.
+
 ## Bewust weggelaten (voor later)
 
 Meldingen en officiële KNMI-waarschuwingen, wifi-herkenning, feedbackfunctie, website-versie, tijdelijke plekken, 14-daagse verwachting (de week is bewust 7 dagen).
