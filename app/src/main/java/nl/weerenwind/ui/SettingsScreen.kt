@@ -99,7 +99,7 @@ fun SettingsScreen(state: UiState, vm: AppViewModel) {
 
         Section("Over") {
             Text(
-                "Weer en Wind · geen account, geen advertenties, geen analytics, geen Google-diensten, geen locatie.\n\n" +
+                "artyweather · geen account, geen advertenties, geen analytics, geen Google-diensten, geen locatie.\n\n" +
                     "Weerdata: Open-Meteo.com (CC BY 4.0), voor Nederland o.a. KNMI HARMONIE. " +
                     "Zoeken: PDOK Locatieserver (Kadaster/BZK) en Open-Meteo Geocoding. " +
                     "De gratis Open-Meteo-API is alleen voor niet-commercieel gebruik.",

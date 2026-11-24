@@ -1,11 +1,13 @@
-# Weer en Wind
+# artyweather
+
+> Voorheen "Weer en Wind". Het interne pakket-ID (`nl.weerenwind`) is bewust gelijk gebleven, zodat updates over oudere versies heen installeren.
 
 Privacyvriendelijke weer-app voor Android, gebouwd op basis van het externe design document "Weer-app bouwen".
 Geen account, geen advertenties, geen analytics, geen Google-diensten en geen locatie-toestemming.
 
 ## Installeren
 
-1. Ga naar **Releases** (rechts op de repo-pagina) en download `WeerEnWind.apk` van de nieuwste release.
+1. Ga naar **Releases** (rechts op de repo-pagina) en download `artyweather.apk` van de nieuwste release.
 2. Open het bestand op je telefoon en sta "installeren uit onbekende bron" toe als Android dat vraagt.
 3. Elke push naar `main` bouwt automatisch een nieuwe release; die installeert over de vorige heen.
 

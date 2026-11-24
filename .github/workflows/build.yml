@@ -22,16 +22,16 @@ jobs:
         run: |
           chmod +x gradlew
           ./gradlew --no-daemon testDebugUnitTest assembleRelease
-          cp app/build/outputs/apk/release/app-release.apk WeerEnWind.apk
+          cp app/build/outputs/apk/release/app-release.apk artyweather.apk
       - uses: actions/upload-artifact@v4
         with:
-          name: WeerEnWind-apk
-          path: WeerEnWind.apk
+          name: artyweather-apk
+          path: artyweather.apk
       - name: Release met APK
         uses: softprops/action-gh-release@v2
         with:
           tag_name: v1.0.${{ github.run_number }}
-          name: Weer en Wind 1.0.${{ github.run_number }}
-          body: "Download **WeerEnWind.apk** hieronder en open het op je telefoon."
-          files: WeerEnWind.apk
+          name: artyweather 1.0.${{ github.run_number }}
+          body: "Download **artyweather.apk** hieronder en open het op je telefoon."
+          files: artyweather.apk
           make_latest: true

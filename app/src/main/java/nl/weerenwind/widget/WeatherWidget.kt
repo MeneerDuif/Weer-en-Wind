@@ -55,7 +55,7 @@ class WeatherWidget : AppWidgetProvider() {
             val fb = b?.let { bundle?.forecasts?.get(it.id) }
 
             if (a == null) {
-                v.setTextViewText(R.id.a_name, "WEER EN WIND")
+                v.setTextViewText(R.id.a_name, "ARTYWEATHER")
                 v.setTextViewText(R.id.a_temp, "–")
                 v.setTextViewText(R.id.a_line, "Voeg een plek toe")
                 v.setTextViewText(R.id.b_name, "")

@@ -23,7 +23,7 @@ object Net {
             c.connectTimeout = 15000
             c.readTimeout = 20000
             c.useCaches = false
-            c.setRequestProperty("User-Agent", "WeerEnWind/1.0 (Android)")
+            c.setRequestProperty("User-Agent", "artyweather/1.0 (Android)")
             c.setRequestProperty("Accept", "application/json")
             code = c.responseCode
             val stream = if (code in 200..299) c.inputStream else c.errorStream
