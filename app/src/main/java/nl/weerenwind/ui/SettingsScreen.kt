@@ -35,6 +35,18 @@ import nl.weerenwind.AppViewModel
 import nl.weerenwind.UiState
 import nl.weerenwind.data.LogEntry
 import nl.weerenwind.logic.Units
+import android.Manifest
+import android.content.pm.PackageManager
+import android.os.Build
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.selection.toggleable
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
+import androidx.core.content.ContextCompat
+import nl.weerenwind.data.Settings
 import java.text.SimpleDateFormat
 import java.util.Date
 
@@ -90,6 +102,8 @@ fun SettingsScreen(state: UiState, vm: AppViewModel) {
             }
         }
 
+        AlertSection(state, vm)
+
         Section("Scherm") {
             Toggle("Statusbalk tonen", s.showStatusBar) { v -> vm.updateSettings { it.copy(showStatusBar = v) } }
             Toggle("Navigatieknoppen tonen", s.showNavBar) { v -> vm.updateSettings { it.copy(showNavBar = v) } }
@@ -101,6 +115,8 @@ fun SettingsScreen(state: UiState, vm: AppViewModel) {
             Text(
                 "artyweather · geen account, geen advertenties, geen analytics, geen Google-diensten, geen locatie.\n\n" +
                     "Weerdata: Open-Meteo.com (CC BY 4.0), voor Nederland o.a. KNMI HARMONIE. " +
+                    "Radar: Buienradar (alleen plek A en B, coördinaten afgerond op ~1 km). " +
+                    "Waarschuwingen: KNMI via MeteoAlarm (zonder locatie; de app kiest zelf jouw provincie). " +
                     "Zoeken: PDOK Locatieserver (Kadaster/BZK) en Open-Meteo Geocoding. " +
                     "De gratis Open-Meteo-API is alleen voor niet-commercieel gebruik.",
                 fontSize = 13.sp, color = c.muted,
@@ -149,19 +165,26 @@ private fun Stepper(label: String, value: String, minus: () -> Unit, plus: () ->
     val c = LocalWeer.current
     Row(Modifier.fillMaxWidth().padding(vertical = 2.dp), verticalAlignment = Alignment.CenterVertically) {
         Text(label, fontSize = 14.sp, color = c.text, modifier = Modifier.weight(1f))
-        TextButton(onClick = minus) { Text("−", fontSize = 18.sp, color = c.muted) }
+        TextButton(onClick = minus, modifier = Modifier.semantics { contentDescription = "$label verlagen" }) { Text("−", fontSize = 18.sp, color = c.muted) }
         Text(value, fontSize = 14.sp, color = c.text, style = Tnum, modifier = Modifier.width(64.dp))
-        TextButton(onClick = plus) { Text("+", fontSize = 18.sp, color = c.muted) }
+        TextButton(onClick = plus, modifier = Modifier.semantics { contentDescription = "$label verhogen" }) { Text("+", fontSize = 18.sp, color = c.muted) }
     }
 }
 
 @Composable
-private fun Toggle(label: String, value: Boolean, onChange: (Boolean) -> Unit) {
+private fun Toggle(label: String, value: Boolean, sub: String? = null, onChange: (Boolean) -> Unit) {
     val c = LocalWeer.current
-    Row(Modifier.fillMaxWidth().padding(vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-        Text(label, fontSize = 14.sp, color = c.text, modifier = Modifier.weight(1f))
+    Row(
+        Modifier.fillMaxWidth().toggleable(value = value, role = Role.Switch, onValueChange = onChange)
+            .padding(vertical = 4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Column(Modifier.weight(1f)) {
+            Text(label, fontSize = 14.sp, color = c.text)
+            if (sub != null) Text(sub, fontSize = 11.sp, color = c.muted, lineHeight = 14.sp)
+        }
         Switch(
-            checked = value, onCheckedChange = onChange,
+            checked = value, onCheckedChange = null,
             colors = SwitchDefaults.colors(
                 checkedThumbColor = c.bg, checkedTrackColor = c.text,
                 uncheckedThumbColor = c.muted, uncheckedTrackColor = c.bg, uncheckedBorderColor = c.border,
@@ -191,6 +214,48 @@ private fun PrivacyLog(vm: AppViewModel) {
                         fontSize = 11.sp, color = if (e.code in 200..299) c.muted else c.warn)
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun AlertSection(state: UiState, vm: AppViewModel) {
+    val c = LocalWeer.current
+    val ctx = LocalContext.current
+    val s = state.settings
+    var denied by remember { mutableStateOf(false) }
+    var pending by remember { mutableStateOf<((Settings) -> Settings)?>(null) }
+    val launcher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { ok ->
+        if (ok) pending?.let { vm.updateSettings(it) } else denied = true
+        pending = null
+    }
+    fun enable(change: (Settings) -> Settings) {
+        val need = Build.VERSION.SDK_INT >= 33 &&
+            ContextCompat.checkSelfPermission(ctx, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
+        if (need) { pending = change; launcher.launch(Manifest.permission.POST_NOTIFICATIONS) } else vm.updateSettings(change)
+    }
+    Section("Meldingen") {
+        Toggle("Regen op komst", s.rainAlerts,
+            sub = "Via de radar, als het bij plek A of B binnen ${s.alertLeadMin} min gaat regenen. Niet tussen 22:00 en 07:00.") { on ->
+            if (on) enable { it.copy(rainAlerts = true) } else vm.updateSettings { it.copy(rainAlerts = false) }
+        }
+        if (s.rainAlerts) {
+            Stepper("Waarschuw vooraf", "${s.alertLeadMin} min",
+                { vm.updateSettings { it.copy(alertLeadMin = (it.alertLeadMin - 10).coerceAtLeast(10)) } }) {
+                vm.updateSettings { it.copy(alertLeadMin = (it.alertLeadMin + 10).coerceAtMost(90)) }
+            }
+        }
+        Toggle("KNMI-waarschuwingen", s.warnAlerts,
+            sub = "Code oranje en rood voor de provincie van je plekken (alleen Nederland).") { on ->
+            if (on) enable { it.copy(warnAlerts = true) } else vm.updateSettings { it.copy(warnAlerts = false) }
+        }
+        if (s.rainAlerts || s.warnAlerts) {
+            Text("Controleert elke 30 minuten, alleen met internet. Haalt dan alleen radar en waarschuwingen op.",
+                fontSize = 11.sp, color = c.faint, modifier = Modifier.padding(top = 4.dp))
+        }
+        if (denied) {
+            Text("Meldingen zijn geweigerd. Zet ze aan via Android-instellingen → Apps → artyweather → Meldingen.",
+                fontSize = 12.sp, color = c.warn, modifier = Modifier.padding(top = 6.dp))
         }
     }
 }

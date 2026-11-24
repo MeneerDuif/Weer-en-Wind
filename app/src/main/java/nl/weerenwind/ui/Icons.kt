@@ -15,7 +15,11 @@ import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Fill
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.rotate
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.Dp
+import nl.weerenwind.logic.Codes
+import nl.weerenwind.logic.Units
 import androidx.compose.ui.unit.dp
 import kotlin.math.cos
 import kotlin.math.sin
@@ -27,7 +31,7 @@ import kotlin.math.sin
 @Composable
 fun WeatherIcon(code: Int, isDay: Boolean, size: Dp = 28.dp, modifier: Modifier = Modifier) {
     val c = LocalWeer.current
-    Canvas(modifier.size(size)) {
+    Canvas(modifier.size(size).semantics { contentDescription = Codes.text(code) }) {
         val sw = this.size.minDimension * 0.065f
         val stroke = Stroke(width = sw, cap = StrokeCap.Round, join = StrokeJoin.Round)
         when (code) {
@@ -120,7 +124,7 @@ private fun DrawScope.fog(color: Color, stroke: Stroke) {
 /** Windpijl: wijst waar de wind naartoe waait (wind uit het noorden → pijl naar beneden). */
 @Composable
 fun WindArrow(dir: Int, color: Color = LocalWeer.current.wind, size: Dp = 12.dp) {
-    Canvas(Modifier.size(size)) {
+    Canvas(Modifier.size(size).semantics { contentDescription = "wind uit " + Units.compassLong(dir) }) {
         rotate(dir.toFloat()) {
             val sw = this.size.minDimension * 0.12f
             val top = Offset(center.x, this.size.height * 0.1f)

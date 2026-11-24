@@ -25,6 +25,12 @@ object Units {
         return names[((d + 22.5) / 45.0).toInt() % 8]
     }
 
+    /** Voor schermlezers: "zuidwest" in plaats van "ZW". */
+    fun compassLong(deg: Int): String = when (compass(deg)) {
+        "N" -> "noord"; "NO" -> "noordoost"; "O" -> "oost"; "ZO" -> "zuidoost"
+        "Z" -> "zuid"; "ZW" -> "zuidwest"; "W" -> "west"; else -> "noordwest"
+    }
+
     fun temp(t: Double): String = if (t.isNaN()) "–" else "${t.safeRound()}°"
 
     fun mm(v: Double): String = when {

@@ -3,4 +3,6 @@
     <string name="app_name">artyweather</string>
     <string name="widget_name">artyweather · 2 plekken</string>
     <string name="widget_desc">Twee plekken naast elkaar, of nu en straks</string>
+    <string name="widget_name_large">artyweather · 12 uur</string>
+    <string name="widget_desc_large">Plekken, temperatuurcurve en regen voor 12 uur, met waarschuwingen</string>
 </resources>

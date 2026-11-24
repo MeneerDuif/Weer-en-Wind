@@ -2,6 +2,7 @@ package nl.weerenwind.logic
 
 import nl.weerenwind.data.Forecast
 import nl.weerenwind.data.Hour
+import nl.weerenwind.data.RadarPoint
 import nl.weerenwind.data.Settings
 import java.time.LocalDateTime
 import java.time.temporal.ChronoUnit
@@ -30,6 +31,7 @@ object Logic {
 
     /** Korte zin zoals "Droog tot 15:00, daarna buien". */
     fun summary(f: Forecast, s: Settings, now: LocalDateTime = f.localNow()): String {
+        RadarLogic.summary(f.radarFor(now), now)?.let { return it }
         val hrs = f.upcoming(now, 12)
         if (hrs.isEmpty()) return "Geen verwachting beschikbaar"
         val nowWet = wet(hrs[0], s) || f.current.precip >= 0.1
@@ -56,10 +58,14 @@ object Logic {
         if (hrs.isEmpty()) return emptyList()
         val out = mutableListOf<Advice>()
 
-        val rainNow = f.current.precip >= 0.1
+        val radar = f.radarFor(now)
+        val rainNow = if (radar.isNotEmpty()) RadarLogic.at(radar, now) >= RadarLogic.WET else f.current.precip >= 0.1
+        val radarWet = RadarLogic.firstWet(radar, now)
         val firstWet = hrs.firstOrNull { it.precip >= s.rainMm || it.prob >= s.rainProb }
         if (rainNow) {
             out += Advice(AdviceKind.RAIN, "Regenjas aan", "Het regent nu")
+        } else if (radarWet != null) {
+            out += Advice(AdviceKind.RAIN, "Regenjas mee", "Radar: ${RadarLogic.intensity(radarWet.mmh)} vanaf ${Units.hm(radarWet.time)}")
         } else if (firstWet != null) {
             out += Advice(AdviceKind.RAIN, "Regenjas mee", "Kans ${firstWet.prob}% vanaf ${Units.hm(maxOf(start(firstWet), now))}")
         }
@@ -88,6 +94,70 @@ object Logic {
         }
         return out
     }
+}
+
+/** Radar (Buienradar, 5-minutenvakken, 2 uur vooruit). Nauwkeuriger dan het model voor de komende 2 uur. */
+object RadarLogic {
+    /** Vanaf 0,2 mm/u telt het als nat. */
+    const val WET = 0.2
+
+    fun at(pts: List<RadarPoint>, t: LocalDateTime): Double =
+        pts.firstOrNull { !t.isBefore(it.time) && t.isBefore(it.time.plusMinutes(5)) }?.mmh ?: 0.0
+
+    fun firstWet(pts: List<RadarPoint>, now: LocalDateTime): RadarPoint? =
+        pts.firstOrNull { it.time.plusMinutes(5).isAfter(now) && it.mmh >= WET }
+
+    fun intensity(mmh: Double): String = when {
+        mmh < 1.0 -> "lichte regen"
+        mmh < 4.0 -> "regen"
+        mmh < 10.0 -> "flinke regen"
+        else -> "zware buien"
+    }
+
+    /**
+     * Zin op basis van de radar, of null als de radar niets bijzonders ziet (dan beslist het model).
+     * Voorbeelden: "Droog tot 18:40, daarna lichte regen" · "Regen tot 19:05, daarna droog".
+     */
+    fun summary(pts: List<RadarPoint>, now: LocalDateTime): String? {
+        val ahead = pts.filter { it.time.plusMinutes(5).isAfter(now) }
+        if (ahead.isEmpty()) return null
+        val wetNow = at(pts, now) >= WET
+        return if (!wetNow) {
+            val w = ahead.firstOrNull { it.mmh >= WET } ?: return null
+            "Droog tot ${Units.hm(w.time)}, daarna ${intensity(ahead.filter { it.mmh >= WET }.take(6).maxOf { it.mmh })}"
+        } else {
+            val peak = ahead.takeWhile { it.mmh >= WET }.maxOfOrNull { it.mmh } ?: at(pts, now)
+            val dry = ahead.firstOrNull { it.mmh < WET }
+            val k = intensity(peak).replaceFirstChar { it.uppercase() }
+            if (dry == null) "$k de komende 2 uur" else "$k tot ${Units.hm(dry.time)}, daarna droog"
+        }
+    }
+}
+
+data class RainAlert(val start: LocalDateTime, val minutes: Long, val text: String, val until: LocalDateTime?)
+
+object Alerts {
+    /**
+     * Regenalarm: alleen als het nu droog is en de radar binnen [leadMin] minuten regen ziet.
+     * Zo krijg je één melding per bui, niet één per kwartier.
+     */
+    fun rain(pts: List<RadarPoint>, now: LocalDateTime, leadMin: Int): RainAlert? {
+        if (pts.isEmpty() || RadarLogic.at(pts, now) >= RadarLogic.WET) return null
+        val w = RadarLogic.firstWet(pts, now) ?: return null
+        val mins = ChronoUnit.MINUTES.between(now, w.time).coerceAtLeast(0)
+        if (mins > leadMin) return null
+        val spell = pts.filter { !it.time.isBefore(w.time) }.takeWhile { it.mmh >= RadarLogic.WET }
+        val until = pts.firstOrNull { it.time.isAfter(w.time) && it.mmh < RadarLogic.WET }?.time
+        val label = RadarLogic.intensity(spell.maxOf { it.mmh })
+        val text = (if (mins < 5) "Nu " + label else label.replaceFirstChar { it.uppercase() } + " over $mins min") +
+            (until?.let { ", droog om ${Units.hm(it)}" } ?: "")
+        return RainAlert(w.time, mins, text, until)
+    }
+
+    /** Geen meldingen 's nachts (22:00–07:00). */
+    fun quiet(now: LocalDateTime): Boolean = now.hour >= 22 || now.hour < 7
+
+    fun codeName(level: Int) = when (level) { 3 -> "Code rood"; 2 -> "Code oranje"; else -> "Code geel" }
 }
 
 object Week {

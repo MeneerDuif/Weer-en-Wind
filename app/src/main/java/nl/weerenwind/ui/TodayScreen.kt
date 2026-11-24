@@ -32,7 +32,16 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.drawText
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
+import nl.weerenwind.data.Repo
+import nl.weerenwind.data.Warning
+import nl.weerenwind.logic.Alerts
 import androidx.compose.ui.unit.sp
 import nl.weerenwind.AppViewModel
 import nl.weerenwind.UiState
@@ -56,7 +65,11 @@ fun TodayScreen(state: UiState, vm: AppViewModel, goPlaces: () -> Unit) {
         ScreenTitle("Vandaag", kicker = LocalDate.now().format(KICKER)) {
             TextAction(if (state.loading) "Bezig…" else "↻ Ververs", enabled = !state.loading) { vm.refresh() }
         }
-        StatusLine(state)
+        StatusLine(state) { vm.refresh() }
+        val warns = state.bundle?.warnings.orEmpty()
+            .mapNotNull { w -> state.slotPlaces.filter { w.appliesTo(it) }.takeIf { it.isNotEmpty() }?.let { w to it } }
+            .sortedByDescending { it.first.level }
+        warns.forEach { (w, ps) -> WarningBanner(w, ps, Modifier.reveal(1)) }
 
         val a = state.placeA
         if (a == null) {
@@ -74,10 +87,11 @@ fun TodayScreen(state: UiState, vm: AppViewModel, goPlaces: () -> Unit) {
 
         // Twee plekken als twee klokken: naast elkaar, gescheiden door één haarlijn.
         Row(Modifier.fillMaxWidth().height(IntrinsicSize.Min).reveal(1)) {
-            Dial(a, state.bundle?.forecasts?.get(a.id), state.settings, two, Modifier.weight(1f))
+            val stale = state.bundle?.isStale() == true
+            Dial(a, state.bundle?.forecasts?.get(a.id), state.settings, two, stale, Modifier.weight(1f))
             if (b != null) {
                 Box(Modifier.padding(horizontal = 14.dp).width(1.dp).fillMaxHeight().background(c.border))
-                Dial(b, state.bundle?.forecasts?.get(b.id), state.settings, true, Modifier.weight(1f))
+                Dial(b, state.bundle?.forecasts?.get(b.id), state.settings, true, stale, Modifier.weight(1f))
             }
         }
 
@@ -92,26 +106,82 @@ fun TodayScreen(state: UiState, vm: AppViewModel, goPlaces: () -> Unit) {
     }
 }
 
+/**
+ * Eerlijke status: wanneer is de data van, is die verouderd, ben je offline, mislukte het verversen?
+ * Bij een fout of offline blijft de laatste data gewoon zichtbaar.
+ */
 @Composable
-fun StatusLine(state: UiState) {
+fun StatusLine(state: UiState, onRetry: () -> Unit) {
     val c = LocalWeer.current
     val b = state.bundle
-    val txt = when {
-        state.error != null -> state.error
-        b != null -> "Bijgewerkt " + SimpleDateFormat("HH:mm", Units.NL).format(Date(b.fetchedAt))
-        else -> null
+    val at = b?.let { SimpleDateFormat("HH:mm", Units.NL).format(Date(it.fetchedAt)) }
+    val age = b?.let { ageText(it.ageMs()) }
+    val stale = b?.isStale() == true
+    val (txt, col, retry) = when {
+        state.loading -> Triple("Verversen…", c.faint, false)
+        state.offline && b != null -> Triple("Offline · data van $at ($age)", if (stale) c.warn else c.muted, false)
+        state.offline -> Triple("Offline · nog geen data", c.warn, false)
+        state.error != null && b != null -> Triple("${state.error} · data van $at ($age)", c.warn, true)
+        state.error != null -> Triple(state.error ?: "", c.warn, true)
+        stale -> Triple("Verouderd · data van $at ($age)", c.warn, true)
+        b != null -> Triple("Bijgewerkt $at", c.faint, false)
+        else -> return
     }
-    if (txt != null) {
-        Text(txt.uppercase(), fontSize = 10.sp, letterSpacing = 1.2.sp,
-            color = if (state.error != null) c.warn else c.faint,
-            modifier = Modifier.padding(bottom = 16.dp))
+    Row(Modifier.fillMaxWidth().padding(bottom = 16.dp).semantics(mergeDescendants = true) { liveRegion = LiveRegionMode.Polite },
+        verticalAlignment = Alignment.CenterVertically) {
+        if (col == c.warn) {
+            Box(Modifier.size(6.dp).clip(CircleShape).background(c.warn))
+            HGap(8)
+        }
+        Text(txt.uppercase(), fontSize = 10.sp, letterSpacing = 1.2.sp, color = col, modifier = Modifier.weight(1f))
+        if (retry) TextAction("Opnieuw", onClick = onRetry)
+    }
+}
+
+fun ageText(ms: Long): String {
+    val min = ms / 60000
+    return when {
+        min < 60 -> "$min min oud"
+        min < 48 * 60 -> "${min / 60} uur oud"
+        else -> "${min / (24 * 60)} dagen oud"
+    }
+}
+
+/** KNMI-waarschuwing als banner met gekleurde streep. */
+@Composable
+fun WarningBanner(w: Warning, places: List<Place>, modifier: Modifier = Modifier) {
+    val c = LocalWeer.current
+    val col = when (w.level) { 3 -> c.warn; 2 -> c.warm; else -> c.sun }
+    val hm = DateTimeFormatter.ofPattern("EEE HH:mm", Units.NL)
+    val period = listOfNotNull(
+        w.onset?.atZoneSameInstant(Repo.AMS)?.format(hm)?.let { "vanaf $it" },
+        w.expires?.atZoneSameInstant(Repo.AMS)?.format(hm)?.let { "tot $it" },
+    ).joinToString(" ")
+    Row(
+        modifier.fillMaxWidth().padding(bottom = 10.dp)
+            .semantics(mergeDescendants = true) {}
+            .drawBehind { drawRect(col, Offset.Zero, Size(2.dp.toPx(), size.height)) }
+            .padding(start = 10.dp, top = 2.dp, bottom = 2.dp),
+    ) {
+        Column {
+            Text("${Alerts.codeName(w.level)} · ${w.event}".uppercase(), fontSize = 11.sp, letterSpacing = 1.2.sp,
+                color = col, fontWeight = FontWeight.Medium)
+            Text("${w.area} (${places.joinToString { it.name }}) $period".trim(), fontSize = 11.sp, color = c.muted)
+        }
     }
 }
 
 @Composable
-private fun Dial(place: Place, f: Forecast?, s: Settings, compact: Boolean, modifier: Modifier) {
+private fun Dial(place: Place, f: Forecast?, s: Settings, compact: Boolean, stale: Boolean, modifier: Modifier) {
     val c = LocalWeer.current
-    Column(modifier) {
+    val spoken = f?.let {
+        val n = it.nowEstimate(stale)
+        "${place.name}: ${Units.temp(n.temp).dropLast(1)} graden, voelt als ${Units.temp(n.feels).dropLast(1)}, " +
+            "${Codes.text(n.code).lowercase()}. ${Logic.summary(it, s)}. " +
+            "Wind ${Units.wind(n.wind, s.windUnit)} uit ${Units.compassLong(n.dir)}. " +
+            Logic.advice(it, s).joinToString(" ") { a -> "${a.title}: ${a.detail}." }
+    } ?: "${place.name}: nog geen data"
+    Column(modifier.clearAndSetSemantics { contentDescription = spoken }) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Box(Modifier.size(6.dp).clip(CircleShape).background(moodColor(f, c)))
             HGap(6)
@@ -122,11 +192,11 @@ private fun Dial(place: Place, f: Forecast?, s: Settings, compact: Boolean, modi
             Text("Nog geen data", color = c.muted, fontSize = 13.sp)
             return@Column
         }
-        val cur = f.current
+        val cur = f.nowEstimate(stale)
         Gap(10)
         WeatherIcon(cur.code, cur.isDay, if (compact) 34.dp else 44.dp)
         BigNumber(Units.temp(cur.temp), if (compact) 76.sp else 104.sp, Modifier.padding(top = 2.dp))
-        Text("VOELT ${Units.temp(cur.feels)} · ${Codes.text(cur.code).uppercase()}", fontSize = 10.sp,
+        Text((if (stale) "VERWACHT · " else "") + "VOELT ${Units.temp(cur.feels)} · ${Codes.text(cur.code).uppercase()}", fontSize = 10.sp,
             letterSpacing = 1.sp, color = c.muted, lineHeight = 14.sp)
         Gap(14)
         Voice(Logic.summary(f, s) + ".", size = if (compact) 19.sp else 24.sp)
@@ -171,7 +241,11 @@ private fun NextHours(place: Place, f: Forecast, s: Settings, modifier: Modifier
         val measurer = rememberTextMeasurer()
         val tempStyle = TextStyle(fontFamily = Type.mono, fontSize = 10.sp, color = c.text)
         val hourStyle = TextStyle(fontFamily = Type.mono, fontSize = 9.sp, color = c.faint)
-        Canvas(Modifier.fillMaxWidth().height(118.dp)) {
+        val spoken = "Komende 12 uur: temperatuur van ${Units.temp(tMin)} tot ${Units.temp(hrs.maxOf { it.temp })}. " +
+            hrs.filter { it.precip >= s.rainMm }.let { w ->
+                if (w.isEmpty()) "Geen neerslag van betekenis." else "Neerslag rond ${w.joinToString { Units.hm(it.time.minusHours(1)) }}."
+            }
+        Canvas(Modifier.fillMaxWidth().height(118.dp).semantics { contentDescription = spoken }) {
             val n = hrs.size
             val padX = 10.dp.toPx()
             val stepX = (size.width - 2 * padX) / (n - 1)

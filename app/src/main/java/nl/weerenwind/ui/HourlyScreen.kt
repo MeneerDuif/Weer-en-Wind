@@ -73,11 +73,11 @@ fun HourlyScreen(state: UiState, vm: AppViewModel) {
 private fun HeaderRow() {
     val c = LocalWeer.current
     Row(Modifier.fillMaxWidth().padding(bottom = 4.dp)) {
-        Text("UUR", Modifier.width(44.dp), fontSize = 10.sp, color = c.faint)
-        Text("", Modifier.width(30.dp))
-        Text("TEMP", Modifier.width(50.dp), fontSize = 10.sp, color = c.faint)
-        Text("MM", Modifier.width(48.dp), fontSize = 10.sp, color = c.faint)
-        Text("KANS", Modifier.width(48.dp), fontSize = 10.sp, color = c.faint)
+        Text("UUR", Modifier.col(44.dp), fontSize = 10.sp, color = c.faint)
+        Text("", Modifier.col(30.dp))
+        Text("TEMP", Modifier.col(50.dp), fontSize = 10.sp, color = c.faint)
+        Text("MM", Modifier.col(48.dp), fontSize = 10.sp, color = c.faint)
+        Text("KANS", Modifier.col(48.dp), fontSize = 10.sp, color = c.faint)
         Text("WIND", Modifier.weight(1f), fontSize = 10.sp, color = c.faint)
     }
     HorizontalDivider(thickness = 1.dp, color = c.border)
@@ -102,12 +102,12 @@ private fun HourRow(h: Hour, s: Settings) {
     // Neerslag geldt voor het uur dat eindigt op h.time; we tonen het beginuur van dat interval.
     val label = "%02d".format(h.time.minusHours(1).hour)
     Row(Modifier.fillMaxWidth().padding(vertical = 7.dp), verticalAlignment = Alignment.CenterVertically) {
-        Text(label, Modifier.width(44.dp), fontSize = 14.sp, color = c.muted, style = Tnum)
-        Box(Modifier.width(30.dp)) { WeatherIcon(h.code, h.isDay, 20.dp) }
-        BigNumber(Units.temp(h.temp), 20.sp, Modifier.width(50.dp))
-        Text(if (h.precip >= 0.05) Units.mm(h.precip) else "–", Modifier.width(48.dp), fontSize = 14.sp,
+        Text(label, Modifier.col(44.dp), fontSize = 14.sp, color = c.muted, style = Tnum)
+        Box(Modifier.col(30.dp)) { WeatherIcon(h.code, h.isDay, 20.dp) }
+        BigNumber(Units.temp(h.temp), 20.sp, Modifier.col(50.dp))
+        Text(if (h.precip >= 0.05) Units.mm(h.precip) else "–", Modifier.col(48.dp), fontSize = 14.sp,
             color = if (h.precip >= 0.1) c.rain else c.faint, style = Tnum)
-        Text("${h.prob}%", Modifier.width(48.dp), fontSize = 14.sp,
+        Text("${h.prob}%", Modifier.col(48.dp), fontSize = 14.sp,
             color = if (h.prob >= s.rainProb) c.rain else c.faint, style = Tnum)
         Row(Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically) {
             WindArrow(h.dir, size = 11.dp)

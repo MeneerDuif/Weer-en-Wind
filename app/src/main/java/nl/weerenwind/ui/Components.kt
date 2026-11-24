@@ -22,6 +22,15 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.staticCompositionLocalOf
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.material3.minimumInteractiveComponentSize
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -42,6 +51,26 @@ import kotlinx.coroutines.delay
 import nl.weerenwind.logic.Advice
 import nl.weerenwind.logic.AdviceKind
 
+/** True als de gebruiker in Android "Animaties verwijderen" aanzette. */
+val LocalReduceMotion = staticCompositionLocalOf { false }
+
+/**
+ * Lettergrootte die meeschaalt met de systeeminstelling, maar begrensd op [maxScale], zodat
+ * enorme temperaturen en titels niet uit beeld lopen bij grote letters.
+ */
+@Composable
+fun capSp(size: TextUnit, maxScale: Float = 1.3f): TextUnit {
+    val fs = LocalDensity.current.fontScale
+    return if (fs <= maxScale) size else (size.value * maxScale / fs).sp
+}
+
+/** Kolombreedte die meegroeit met grote letters (tot 1,5×), zodat tabellen niet afknippen. */
+@Composable
+fun Modifier.col(w: Dp): Modifier = this.width(w * LocalDensity.current.fontScale.coerceIn(1f, 1.5f))
+
+@Composable
+fun scaled(w: Dp): Dp = w * LocalDensity.current.fontScale.coerceIn(1f, 1.5f)
+
 /** Cijfers met vaste breedte, zodat kolommen netjes uitlijnen. */
 val Tnum = TextStyle(fontFeatureSettings = "tnum")
 
@@ -54,9 +83,11 @@ val EaseOut = CubicBezierEasing(0.16f, 1f, 0.3f, 1f)
  */
 @Composable
 fun Modifier.reveal(index: Int): Modifier {
-    val p = remember { Animatable(0f) }
+    val reduce = LocalReduceMotion.current
+    val p = remember { Animatable(if (reduce) 1f else 0f) }
     val dy = with(LocalDensity.current) { 18.dp.toPx() }
     LaunchedEffect(Unit) {
+        if (reduce) return@LaunchedEffect
         delay(index * 70L)
         p.animateTo(1f, tween(620, easing = EaseOut))
     }
@@ -69,8 +100,10 @@ fun Modifier.reveal(index: Int): Modifier {
 /** Animatie 0 → 1 bij eerste weergave, voor balkjes en lijnen. */
 @Composable
 fun growIn(delayMs: Int = 120, durationMs: Int = 900): Float {
-    val p = remember { Animatable(0f) }
+    val reduce = LocalReduceMotion.current
+    val p = remember { Animatable(if (reduce) 1f else 0f) }
     LaunchedEffect(Unit) {
+        if (reduce) return@LaunchedEffect
         delay(delayMs.toLong())
         p.animateTo(1f, tween(durationMs, easing = EaseOut))
     }
@@ -107,15 +140,17 @@ fun Label(text: String, modifier: Modifier = Modifier, color: Color = LocalWeer.
 /** Serif-zin, cursief: de "stem" van de app. */
 @Composable
 fun Voice(text: String, modifier: Modifier = Modifier, size: TextUnit = 20.sp, color: Color = LocalWeer.current.text) {
+    val sz = capSp(size, 1.6f)
     Text(text, modifier = modifier, fontFamily = Type.serif, fontStyle = FontStyle.Italic,
-        fontSize = size, lineHeight = size * 1.15f, color = color)
+        fontSize = sz, lineHeight = sz * 1.15f, color = color)
 }
 
 /** Groot getal in de serif. */
 @Composable
 fun BigNumber(text: String, size: TextUnit, modifier: Modifier = Modifier, color: Color = LocalWeer.current.text) {
-    Text(text, modifier = modifier, fontFamily = Type.serif, fontSize = size, lineHeight = size,
-        color = color, style = TextStyle(fontFeatureSettings = "lnum"))
+    val sz = capSp(size, if (size.value > 40) 1.15f else 1.4f)
+    Text(text, modifier = modifier, fontFamily = Type.serif, fontSize = sz, lineHeight = sz,
+        color = color, style = TextStyle(fontFeatureSettings = "lnum"), maxLines = 1, softWrap = false)
 }
 
 @Composable
@@ -124,8 +159,8 @@ fun ScreenTitle(title: String, kicker: String? = null, trailing: @Composable () 
     Column(Modifier.fillMaxWidth().padding(top = 8.dp, bottom = 18.dp).reveal(0)) {
         if (kicker != null) Label(kicker, color = c.faint)
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.Bottom) {
-            Text(title, fontSize = 44.sp, lineHeight = 46.sp, fontFamily = Type.serif, color = c.text,
-                modifier = Modifier.weight(1f))
+            Text(title, fontSize = capSp(44.sp, 1.15f), lineHeight = capSp(46.sp, 1.15f), fontFamily = Type.serif, color = c.text,
+                modifier = Modifier.weight(1f).semantics { heading() })
             trailing()
         }
     }
@@ -138,7 +173,8 @@ fun TextAction(text: String, enabled: Boolean = true, onClick: () -> Unit) {
     Text(
         text.uppercase(), fontFamily = Type.mono, fontSize = 11.sp, letterSpacing = 1.4.sp,
         color = if (enabled) c.text else c.faint,
-        modifier = Modifier.clip(RoundedCornerShape(2.dp)).clickable(enabled = enabled, onClick = onClick)
+        modifier = Modifier.minimumInteractiveComponentSize().clip(RoundedCornerShape(2.dp))
+            .clickable(enabled = enabled, role = Role.Button, onClick = onClick)
             .padding(horizontal = 6.dp, vertical = 8.dp),
     )
 }
@@ -153,8 +189,10 @@ fun Chip(text: String, selected: Boolean, onClick: () -> Unit) {
             .clip(shape)
             .background(if (selected) c.text else Color.Transparent)
             .border(1.dp, if (selected) c.text else c.border, shape)
-            .clickable(onClick = onClick)
+            .selectable(selected = selected, role = Role.RadioButton, onClick = onClick)
+            .heightIn(min = 40.dp)
             .padding(horizontal = 10.dp, vertical = 6.dp),
+        contentAlignment = Alignment.Center,
     ) {
         Text(text.uppercase(), fontSize = 11.sp, letterSpacing = 1.2.sp, fontFamily = Type.mono,
             color = if (selected) c.bg else c.muted)
@@ -179,7 +217,7 @@ fun AdviceRow(a: Advice) {
     val c = LocalWeer.current
     val col = adviceColor(a.kind)
     Row(
-        Modifier.padding(top = 8.dp).drawBehind {
+        Modifier.padding(top = 8.dp).semantics(mergeDescendants = true) {}.drawBehind {
             drawRect(col, Offset.Zero, Size(2.dp.toPx(), size.height))
         }.padding(start = 9.dp),
     ) {
@@ -195,10 +233,10 @@ fun AdviceRow(a: Advice) {
  * Hoogte = hoeveelheid (tot [maxMm]); doorzichtigheid = kans, als die bekend is.
  */
 @Composable
-fun Bars(values: List<Double>, probs: List<Int>?, maxMm: Double, modifier: Modifier = Modifier) {
+fun Bars(values: List<Double>, probs: List<Int>?, maxMm: Double, modifier: Modifier = Modifier, description: String = "") {
     val c = LocalWeer.current
     val grow = growIn()
-    Canvas(modifier.fillMaxWidth().height(64.dp)) {
+    Canvas(modifier.fillMaxWidth().height(64.dp).semantics { if (description.isNotBlank()) contentDescription = description }) {
         if (values.isEmpty()) return@Canvas
         val n = values.size
         val gap = 3.dp.toPx()

@@ -97,7 +97,7 @@ private fun WeekCard(p: Place, days: List<Day>, lo: Double, hi: Double, s: Setti
                     .padding(vertical = 9.dp),
             ) {
                 DayRow(d, dayLabel(d.date, today), lo, hi)
-                Row(Modifier.padding(start = 74.dp, top = 2.dp), verticalAlignment = Alignment.CenterVertically) {
+                Row(Modifier.padding(start = scaled(74.dp), top = 2.dp), verticalAlignment = Alignment.CenterVertically) {
                     val wet = d.precip >= 1.0 || d.probMax >= max(s.rainProb, 60)
                     Text(Week.line(d, s), fontSize = 12.sp, color = if (wet) c.rain else c.muted,
                         modifier = Modifier.weight(1f))
@@ -122,9 +122,9 @@ private fun dayLabel(d: LocalDate, today: LocalDate): String = when (d) {
 private fun DayRow(d: Day, label: String, lo: Double, hi: Double) {
     val c = LocalWeer.current
     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-        Text(label, Modifier.width(74.dp), fontSize = 14.sp, color = c.text)
-        Box(Modifier.width(30.dp)) { WeatherIcon(d.code, true, 22.dp) }
-        Text(Units.temp(d.tMin), Modifier.width(38.dp), fontSize = 14.sp, color = c.muted,
+        Text(label, Modifier.col(74.dp), fontSize = 14.sp, color = c.text)
+        Box(Modifier.col(30.dp)) { WeatherIcon(d.code, true, 22.dp) }
+        Text(Units.temp(d.tMin), Modifier.col(38.dp), fontSize = 14.sp, color = c.muted,
             style = Tnum, textAlign = TextAlign.End)
         val grow = growIn(delayMs = 200, durationMs = 1000)
         val cold = c.cold
@@ -142,14 +142,14 @@ private fun DayRow(d: Day, label: String, lo: Double, hi: Double) {
                 Offset(start, 0f), Size(w, size.height), r,
             )
         }
-        BigNumber(Units.temp(d.tMax), 22.sp, Modifier.width(38.dp))
+        BigNumber(Units.temp(d.tMax), 22.sp, Modifier.col(38.dp))
     }
 }
 
 @Composable
 private fun DayDetails(d: Day, s: Settings) {
     val c = LocalWeer.current
-    Column(Modifier.padding(start = 74.dp, top = 8.dp)) {
+    Column(Modifier.padding(start = scaled(74.dp), top = 8.dp)) {
         Text(Codes.text(d.code), fontSize = 13.sp, color = c.text)
         Detail("Neerslag", "${Units.mm(d.precip)} mm · kans tot ${d.probMax}%")
         Detail("Wind", "${Units.wind(d.windMax, s.windUnit)} uit ${Units.compass(d.dir)}, stoten ${d.gustMax.roundToInt()} km/u")
@@ -164,7 +164,7 @@ private fun DayDetails(d: Day, s: Settings) {
 private fun Detail(k: String, v: String) {
     val c = LocalWeer.current
     Row(Modifier.padding(top = 3.dp)) {
-        Text(k, Modifier.width(76.dp), fontSize = 12.sp, color = c.faint)
+        Text(k, Modifier.col(76.dp), fontSize = 12.sp, color = c.faint)
         Text(v, fontSize = 12.sp, color = c.muted)
     }
 }

@@ -25,7 +25,13 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -104,6 +110,9 @@ fun AppRoot(vm: AppViewModel, state: UiState) {
     val c = LocalWeer.current
     var tab by rememberSaveable { mutableIntStateOf(state.settings.startTab.coerceIn(0, TABS.size - 1)) }
     val mood = moodColor(state.placeA?.let { state.bundle?.forecasts?.get(it.id) }, c)
+    LaunchedEffect(state.pendingTab) {
+        state.pendingTab?.let { tab = it; vm.consumeTab() }
+    }
 
     Box(Modifier.fillMaxSize()) {
         Atmosphere(mood)
@@ -151,12 +160,16 @@ private fun TabBar(selected: Int, onSelect: (Int) -> Unit) {
                     Modifier
                         .weight(1f)
                         .fillMaxSize()
-                        .clickable(remember { MutableInteractionSource() }, indication = null) { onSelect(i) },
+                        .selectable(
+                            selected = active, interactionSource = remember { MutableInteractionSource() },
+                            indication = null, role = Role.Tab,
+                        ) { onSelect(i) }
+                        .semantics(mergeDescendants = true) { contentDescription = label },
                     horizontalAlignment = Alignment.CenterHorizontally,
                 ) {
                     Box(Modifier.width(bar).height(2.dp).background(c.text))
                     Text(num, fontFamily = Type.mono, fontSize = 9.sp, color = if (active) c.muted else c.faint,
-                        modifier = Modifier.padding(top = 9.dp))
+                        modifier = Modifier.padding(top = 9.dp).clearAndSetSemantics {})
                     Text(label.uppercase(), fontFamily = Type.mono, fontSize = 9.sp, letterSpacing = 0.8.sp,
                         color = col, fontWeight = if (active) FontWeight.Medium else FontWeight.Normal, maxLines = 1)
                 }

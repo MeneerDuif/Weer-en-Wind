@@ -37,7 +37,7 @@ object Api {
     fun searchNL(ctx: Context, q: String): List<Place> {
         val fq = enc("type:(woonplaats OR gemeente OR wijk OR buurt OR postcode)")
         val url = "https://api.pdok.nl/bzk/locatieserver/search/v3_1/free?q=${enc(q)}&fq=$fq" +
-            "&fl=id,weergavenaam,type,centroide_ll&rows=8"
+            "&fl=id,weergavenaam,type,centroide_ll,provincienaam&rows=8"
         val docs = JSONObject(Net.get(ctx, url, "plek zoeken (NL)"))
             .optJSONObject("response")?.optJSONArray("docs") ?: return emptyList()
         val point = Regex("""POINT\(([-\d.]+) ([-\d.]+)\)""")
@@ -53,6 +53,7 @@ object Api {
                 lat = m.groupValues[2].toDouble(),
                 lon = m.groupValues[1].toDouble(),
                 source = "PDOK",
+                province = d.optString("provincienaam"),
             )
         }
     }
@@ -65,6 +66,28 @@ object Api {
         "postcode" -> "Postcode"
         else -> t
     }
+
+    /** Provincie bij coördinaten (voor plekken die zijn opgeslagen vóór de waarschuwingen). */
+    fun province(ctx: Context, lat: Double, lon: Double): String {
+        val url = "https://api.pdok.nl/bzk/locatieserver/search/v3_1/reverse?lat=" +
+            String.format(Locale.US, "%.4f", lat) + "&lon=" + String.format(Locale.US, "%.4f", lon) +
+            "&type=gemeente&rows=1&fl=*"
+        val docs = JSONObject(Net.get(ctx, url, "provincie opzoeken (NL)"))
+            .optJSONObject("response")?.optJSONArray("docs") ?: return ""
+        return if (docs.length() == 0) "" else docs.getJSONObject(0).optString("provincienaam")
+    }
+
+    /** Buienradar-radar voor de komende 2 uur. Coördinaten afgerond op 2 decimalen (~1 km). */
+    fun radar(ctx: Context, p: Place, now: java.time.LocalDateTime): List<RadarPoint> {
+        val url = "https://gpsgadget.buienradar.nl/data/raintext?lat=" +
+            String.format(Locale.US, "%.2f", p.lat) + "&lon=" + String.format(Locale.US, "%.2f", p.lon)
+        return Feeds.radar(Net.get(ctx, url, "regenradar (Buienradar)"), now)
+    }
+
+    /** KNMI-waarschuwingen voor heel Nederland via MeteoAlarm. Er gaat geen locatie mee. */
+    fun warnings(ctx: Context): List<Warning> = Feeds.warnings(
+        Net.get(ctx, "https://feeds.meteoalarm.org/feeds/meteoalarm-legacy-atom-netherlands", "weerwaarschuwingen (KNMI via MeteoAlarm)")
+    )
 
     /** Zoeken in het buitenland via de Open-Meteo-geocoder. */
     fun searchWorld(ctx: Context, q: String): List<Place> {

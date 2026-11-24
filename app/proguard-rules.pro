@@ -1,2 +1,3 @@
 -keep class * extends androidx.lifecycle.ViewModel { <init>(...); }
 -keep class nl.weerenwind.widget.** { *; }
+-keep class nl.weerenwind.alerts.** { *; }

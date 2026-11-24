@@ -25,10 +25,13 @@ Geen account, geen advertenties, geen analytics, geen Google-diensten en geen lo
 | Adviezen | Regenjas, warme jas, gladheid, harde wind, zonnebrand; drempels instelbaar |
 | Week | 7 dagen per plek: min/max met temperatuurbalk, neerslag, kans, wind; dag 3+ gedimd (onzekerder); tik voor details |
 | Regen | Per kwartier (3 uur), buienbalk 24 uur, "Hoe nat word ik?", beste vertrekmoment, droge vensters |
-| Meldingen | Geen (versie 2) |
-| Widget | 2×1: twee plekken, of nu → over 3 uur; ververst hooguit elke 2 uur |
+| Meldingen | Optioneel: regen op komst (radar, 10–90 min vooraf, niet 22–07 u) en KNMI code oranje/rood voor je provincie; controle elke 30 min via WorkManager |
+| Widgets | 2×1 (twee plekken, of nu → over 3 uur) en 4×2 (plus 12-uurscurve, regen en waarschuwing); zelfde fonts en sfeer als de app |
 | Verversen | Bij openen als data ouder is dan 30 minuten |
-| Privacy | Alleen Open-Meteo en PDOK; coördinaten afgerond op 3 decimalen; privacy-logboek van 7 dagen |
+| Radar | Buienradar, per 5 min voor 2 uur (alleen plek A/B in NL/BE); gebruikt in zinnen, adviezen en "Hoe nat word ik?" |
+| Offline | Laatste data blijft zichtbaar met leeftijd; na 3 uur "verouderd" en de verwachting voor nu i.p.v. oude meting; automatisch opnieuw zodra er weer netwerk is |
+| Toegankelijkheid | Alle tekstkleuren ≥ 4,5:1 (WCAG AA) in alle 7 thema's, afgedwongen door een unit test; schermlezer-teksten voor iconen, grafieken en plekken; meeschalende kolommen; "animaties verwijderen" wordt gerespecteerd |
+| Privacy | Open-Meteo, PDOK, Buienradar en MeteoAlarm; coördinaten afgerond op 3 decimalen; privacy-logboek van 7 dagen |
 | Gebruik | Alleen voor jezelf (Open-Meteo gratis = niet-commercieel) |
 
 ### Kleuren AMOLED-zwart
@@ -38,8 +41,8 @@ Geen account, geen advertenties, geen analytics, geen Google-diensten en geen lo
 | Achtergrond / kaart | `#000000` |
 | Rand | `#1C1C1C` |
 | Tekst | `#E8E8E8` |
-| Gedempt | `#8C8C8C` |
-| Zwak | `#4A4A4A` |
+| Gedempt | `#A6A6A6` |
+| Zwak | `#7C7C7C` |
 | Regen | `#5AB0FF` |
 | Warm | `#FFB454` |
 | Koud | `#8FB4FF` |
@@ -57,7 +60,7 @@ Geen account, geen advertenties, geen analytics, geen Google-diensten en geen lo
 
 ## Bewust weggelaten (voor later)
 
-Meldingen en officiële KNMI-waarschuwingen, wifi-herkenning, feedbackfunctie, website-versie, tijdelijke plekken, 14-daagse verwachting (de week is bewust 7 dagen).
+Wifi-herkenning, feedbackfunctie, website-versie, tijdelijke plekken, 14-daagse verwachting (de week is bewust 7 dagen).
 
 ## Techniek
 

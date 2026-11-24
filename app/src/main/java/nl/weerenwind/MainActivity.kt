@@ -1,6 +1,11 @@
 package nl.weerenwind
 
+import android.content.Intent
 import android.os.Bundle
+import android.provider.Settings
+import androidx.compose.runtime.CompositionLocalProvider
+import nl.weerenwind.alerts.AlertWorker
+import nl.weerenwind.ui.LocalReduceMotion
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -22,6 +27,9 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         enableEdgeToEdge()
         super.onCreate(savedInstanceState)
+        handleIntent(intent)
+        // "Animaties verwijderen" in Android-toegankelijkheid → geen binnenkomst-animaties
+        val reduceMotion = Settings.Global.getFloat(contentResolver, Settings.Global.ANIMATOR_DURATION_SCALE, 1f) == 0f
         setContent {
             val state by vm.state.collectAsState()
             val colors = Themes.byId(state.settings.theme, isSystemInDarkTheme())
@@ -35,8 +43,20 @@ class MainActivity : ComponentActivity() {
                 if (state.settings.showNavBar) ctl.show(WindowInsetsCompat.Type.navigationBars())
                 else ctl.hide(WindowInsetsCompat.Type.navigationBars())
             }
-            WeerTheme(colors) { AppRoot(vm, state) }
+            CompositionLocalProvider(LocalReduceMotion provides reduceMotion) {
+                WeerTheme(colors) { AppRoot(vm, state) }
+            }
         }
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        handleIntent(intent)
+    }
+
+    private fun handleIntent(i: Intent?) {
+        val tab = i?.getIntExtra(AlertWorker.EXTRA_TAB, -1) ?: -1
+        if (tab >= 0) vm.openTab(tab)
     }
 
     override fun onResume() {

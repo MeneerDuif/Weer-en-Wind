@@ -29,6 +29,7 @@ import nl.weerenwind.data.Place
 import nl.weerenwind.data.Settings
 import nl.weerenwind.logic.Codes
 import nl.weerenwind.logic.Rain
+import nl.weerenwind.logic.RadarLogic
 import nl.weerenwind.logic.Units
 
 private val OFFSETS = listOf(-1, 0, 1, 3, 8, 12, 24)
@@ -97,12 +98,33 @@ private fun RainCard(p: Place, f: Forecast, s: Settings) {
     WCard(Modifier.fillMaxWidth().padding(top = 22.dp).reveal(2)) {
         Label(p.name, color = c.text, size = 12.sp)
 
+        val radar = f.radarFor(now).filter { it.time.plusMinutes(5).isAfter(now) }
         val qs = f.quarters.filter { it.time.isAfter(now) }.take(12)
-        if (qs.isNotEmpty()) {
-            Spacer(Modifier.height(10.dp))
-            Text("Komende 3 uur, per kwartier", fontSize = 13.sp, color = c.muted)
+        if (radar.size >= 3) {
+            Spacer(Modifier.height(12.dp))
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Label("Radar · komende 2 uur", color = c.rain)
+                HGap(8)
+                Label("per 5 min", color = c.faint)
+            }
             Spacer(Modifier.height(6.dp))
-            Bars(qs.map { it.precip * 4 }, null, 4.0) // mm/u
+            Voice((RadarLogic.summary(radar, now) ?: "Droog volgens de radar") + ".", size = 20.sp)
+            Spacer(Modifier.height(8.dp))
+            val wet = radar.filter { it.mmh >= RadarLogic.WET }
+            Bars(
+                radar.map { it.mmh }, null, 4.0,
+                description = if (wet.isEmpty()) "Radar: droog de komende 2 uur."
+                else "Radar: neerslag van ${Units.hm(wet.first().time)} tot ${Units.hm(wet.last().time.plusMinutes(5))}, " +
+                    "maximaal ${Units.mm(wet.maxOf { it.mmh })} millimeter per uur.",
+            )
+            BarLabels(listOf(Units.hm(radar.first().time), Units.hm(radar[radar.size / 2].time), Units.hm(radar.last().time.plusMinutes(5))))
+            Text("Bron: Buienradar", fontSize = 10.sp, color = c.faint, modifier = Modifier.padding(top = 4.dp))
+        } else if (qs.isNotEmpty()) {
+            Spacer(Modifier.height(10.dp))
+            Text("Komende 3 uur, per kwartier (model" + (if (p.inRadarArea) "; radar niet beschikbaar)" else ")"), fontSize = 13.sp, color = c.muted)
+            Spacer(Modifier.height(6.dp))
+            Bars(qs.map { it.precip * 4 }, null, 4.0, description = "Model, komende 3 uur: " +
+                (qs.filter { it.precip >= 0.05 }.takeIf { it.isNotEmpty() }?.let { "neerslag rond ${Units.hm(it.first().time.minusMinutes(15))}." } ?: "droog.")) // mm/u
             BarLabels(listOf(Units.hm(qs.first().time.minusMinutes(15)), Units.hm(qs.last().time)))
         }
 
@@ -111,7 +133,8 @@ private fun RainCard(p: Place, f: Forecast, s: Settings) {
             Spacer(Modifier.height(14.dp))
             Text("Buienbalk 24 uur (hoogte = mm, kleur = kans)", fontSize = 13.sp, color = c.muted)
             Spacer(Modifier.height(6.dp))
-            Bars(hrs.map { it.precip }, hrs.map { it.prob }, 4.0)
+            Bars(hrs.map { it.precip }, hrs.map { it.prob }, 4.0, description = "Komende 24 uur: totaal " +
+                "${Units.mm(hrs.sumOf { it.precip })} millimeter, hoogste kans ${hrs.maxOf { it.prob }} procent.")
             BarLabels(listOf(
                 Units.hm(hrs.first().time.minusHours(1)),
                 Units.hm(hrs[hrs.size / 2].time),

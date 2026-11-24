@@ -24,7 +24,7 @@ object Net {
             c.readTimeout = 20000
             c.useCaches = false
             c.setRequestProperty("User-Agent", "artyweather/1.0 (Android)")
-            c.setRequestProperty("Accept", "application/json")
+            c.setRequestProperty("Accept", "application/json, application/atom+xml, text/plain")
             code = c.responseCode
             val stream = if (code in 200..299) c.inputStream else c.errorStream
             val body = stream?.bufferedReader()?.use { it.readText() } ?: ""

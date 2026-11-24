@@ -3,7 +3,17 @@ package nl.weerenwind
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import android.net.ConnectivityManager
+import android.net.Network
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
+import nl.weerenwind.alerts.AlertWorker
+import java.io.IOException
+import java.net.ConnectException
+import java.net.SocketTimeoutException
+import java.net.UnknownHostException
+import javax.net.ssl.SSLException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.update
@@ -25,6 +35,8 @@ data class UiState(
     val bundle: Bundle? = null,
     val loading: Boolean = false,
     val error: String? = null,
+    val offline: Boolean = false,
+    val pendingTab: Int? = null,
     val results: List<Place> = emptyList(),
     val searching: Boolean = false,
     val searchError: String? = null,
@@ -48,27 +60,92 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     )
     val state: StateFlow<UiState> = _state
 
-    /** Verversen bij openen als de data ouder is dan 30 minuten. */
-    fun refreshIfStale() {
+    private var retries = 0
+    private var retryJob: Job? = null
+
+    private val netCallback = object : ConnectivityManager.NetworkCallback() {
+        override fun onAvailable(network: Network) {
+            val wasOffline = _state.value.offline
+            _state.update { it.copy(offline = false) }
+            // Verbinding terug: meteen opnieuw proberen als het eerder mislukte of de data oud is.
+            if (wasOffline || _state.value.error != null) viewModelScope.launch { refreshIfStale(force = _state.value.error != null) }
+        }
+
+        override fun onLost(network: Network) {
+            val cm = ctx.getSystemService(ConnectivityManager::class.java)
+            if (cm.activeNetwork == null) _state.update { it.copy(offline = true) }
+        }
+    }
+
+    init {
+        val cm = app.getSystemService(ConnectivityManager::class.java)
+        _state.update { it.copy(offline = cm.activeNetwork == null) }
+        runCatching { cm.registerDefaultNetworkCallback(netCallback) }
+        AlertWorker.schedule(app)
+    }
+
+    override fun onCleared() {
+        runCatching { ctx.getSystemService(ConnectivityManager::class.java).unregisterNetworkCallback(netCallback) }
+    }
+
+    /** Verversen bij openen als de data ouder is dan 30 minuten (radar: ouder dan 10 minuten). */
+    fun refreshIfStale(force: Boolean = false) {
         val b = _state.value.bundle
         val stale = b == null || System.currentTimeMillis() - b.fetchedAt > 30 * 60 * 1000
         val missing = _state.value.places.any { b?.forecasts?.get(it.id)?.days?.isNotEmpty() != true }
-        if (stale || missing) refresh()
+        if (force || stale || missing) refresh()
+        else if (System.currentTimeMillis() - b!!.radarAt > 10 * 60 * 1000) refreshExtras()
     }
 
     fun refresh() {
         if (_state.value.loading || _state.value.places.isEmpty()) return
+        retryJob?.cancel()
         _state.update { it.copy(loading = true, error = null) }
         viewModelScope.launch(Dispatchers.IO) {
             try {
                 val b = Repo.fetch(ctx)
-                _state.update { it.copy(bundle = b, loading = false) }
+                retries = 0
+                _state.update { it.copy(bundle = b, loading = false, places = Repo.loadPlaces(ctx)) }
                 WeatherWidget.updateAll(ctx)
             } catch (e: Exception) {
-                _state.update { it.copy(loading = false, error = "Verversen mislukt: ${e.message ?: "geen verbinding"}") }
+                _state.update { it.copy(loading = false, error = friendly(e)) }
+                scheduleRetry()
             }
         }
     }
+
+    /** Alleen radar en waarschuwingen; de verwachting blijft staan. */
+    private fun refreshExtras() {
+        viewModelScope.launch(Dispatchers.IO) {
+            runCatching { Repo.refreshExtras(ctx) }.onSuccess {
+                _state.update { it.copy(bundle = Repo.loadBundle(ctx), places = Repo.loadPlaces(ctx)) }
+                WeatherWidget.updateAll(ctx)
+            }
+        }
+    }
+
+    /** Twee stille nieuwe pogingen (na 20 s en 90 s) als er wel netwerk is; zonder netwerk wacht de callback. */
+    private fun scheduleRetry() {
+        if (retries >= 2 || _state.value.offline) return
+        val wait = if (retries == 0) 20_000L else 90_000L
+        retries++
+        retryJob = viewModelScope.launch {
+            delay(wait)
+            refresh()
+        }
+    }
+
+    private fun friendly(e: Exception): String = when (e) {
+        is UnknownHostException, is ConnectException -> "Geen internet"
+        is SocketTimeoutException -> "De weerdienst reageert niet"
+        is SSLException -> "Beveiligde verbinding mislukt"
+        is IOException -> e.message?.let { m -> Regex("""HTTP (\d+)""").find(m)?.groupValues?.get(1) }
+            ?.let { "De weerdienst gaf een fout ($it)" } ?: "Verversen mislukt"
+        else -> "Verversen mislukt"
+    }
+
+    fun openTab(tab: Int) = _state.update { it.copy(pendingTab = tab) }
+    fun consumeTab() = _state.update { it.copy(pendingTab = null) }
 
     fun search(q: String) {
         if (q.isBlank()) return
@@ -136,9 +213,15 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     fun updateSettings(f: (Settings) -> Settings) {
-        val n = f(_state.value.settings)
+        val old = _state.value.settings
+        val n = f(old)
         Repo.saveSettings(ctx, n)
         _state.update { it.copy(settings = n) }
+        if (old.rainAlerts != n.rainAlerts || old.warnAlerts != n.warnAlerts) {
+            AlertWorker.schedule(ctx)
+            AlertWorker.createChannels(ctx)
+        }
+        if (old.theme != n.theme) WeatherWidget.updateAll(ctx)
     }
 
     fun log(): List<LogEntry> = Net.entries(ctx)
